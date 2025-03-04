@@ -1,9 +1,7 @@
 ############################################################################################################################################################
 # Author : achemkhi ali.chemkhi@curie.fr
 
-# This scripts preprocess a seurat object in the aim of generating input files for miic 
-# select the features that are relevant to our analysis based on a list of foi example c("gene1","gene2","metadata1")
-# all the metadata we want to include in miic must be in the seurat object 
+# Helper functions to preprocess seurat object for miic analysis
 ############################################################################################################################################################
 
 
