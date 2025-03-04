@@ -7,10 +7,14 @@ output:
     toc_float: true
 ---
 
-# MIIC on ibreg dataset - D7
+# generate MIIC files 
 
-use both resection and GOBP_INFLAMMATORY score to select genes 
-https://www.gsea-msigdb.org/gsea/msigdb/mouse/geneset/GOBP_INFLAMMATORY_RESPONSE
+- Read a seurat object (need to support adata files also )
+- Filter according to the defined filters
+- Run MI selection on our features of interest
+- Handle the selection (group by foi or not )
+- Dump miic preprocessed files  
+
 
 
 ## init env
@@ -21,26 +25,24 @@ To make sure that the environment is clean and the working directory is set to t
 rm(list=ls())
 # set the working directory to the project root
 library(this.path)
+library(here)
 current_file_path <- this.path::this.path()
 current_dir_path <- dirname(current_file_path) # scr
 project_dir_path <- dirname(current_dir_path) 
-
-```
-
-```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir =project_dir_path)
 setwd(project_dir_path)
-getwd()
+wd<-getwd()
+#fs::link_create(path = "data", new_path = "data")
+#fs::link_create(path = "renv", new_path = "renv")
+
 ```
-
 ## Import libraries
-
 ```{r, warning = FALSE }
+# activate renv
+# renv::activate(project = wd)
 library(Seurat)
 library(dplyr)
 library(ggplot2)
 library(miic) #devtools::install_github("interactMIIC/causalCCC/miic_R_package", force = T, ref = "achemkhi/no-goi-limit-branch") #latest version of MIIC
-getwd()
 ```
 
 
@@ -48,43 +50,66 @@ getwd()
 
 ## predefined list of genes 
 ```{r}
+
 # ALL TF and regulators 
-TF_list=read.csv("data/TFs.tsv",sep="\t") %>% pull(TF)
-REG_list=read.csv("data/REGs.tsv",sep="\t") %>% pull(x)
+TF_list=read.csv(here(wd,"data/TFs.tsv"),sep="\t") %>% pull(TF)
+REG_list=read.csv(here(wd,"data/REGs.tsv"),sep="\t") %>% pull(x)
+# from https://www.gsea-msigdb.org/gsea/msigdb/mouse/geneset/GOBP_INFLAMMATORY_RESPONSE
+gobp_genes_str="Msmp,Ccl21b,Cd200l2,Lrrc19,Mir883b,Akna,Smpdl3b,Nlrp6,Mir7116,Mir7578,Ttc39aos1,Cd276,Traf3ip2,Chil4,Bap1,Pld4,Ano6,Sharpin,Gpsm3,Ticam1,Ttbk1,Ffar4,Il1rl2,Lgals2,Olr1,Foxp1,Npy,Hyal3,Selenos,Cela1,Abr,Bcr,Acp5,Chrna7,Adipoq,Acvr1,Ada,Adam17,Adam8,Adcy7,Adcy8,Adcyap1,Adora1,Adora2a,Adora2b,Adora3,Ager,Agt,Agtr1a,Agtr1b,Agtr2,Ahcyl,Ahr,Ahsg,Aif1,Akt1,Abcd1,Alox15,Alox5,Alox5ap,Tirap,Aoc3,Fabp4,Ap3b1,Cd5l,Apoa1,Apod,Apoe,App,Arnt,Atm,Slc7a2,Atrn,Bcl6,Bdkrb1,Bdkrb2,Bmp2,Bmp6,Bmpr1b,Bst1,Bpgm,Btk,C1qa,C3,C3ar1,C5ar1,Calca,Camk4,Casp1,Casp4,Casp12,Casp6,Ccr6,Cd14,Cd24a,Cd28,Cd2ap,Cd36,Cd44,Cd6,Cd68,Cd81,Cdh5,Cebpa,Cebpb,Cfh,Chi3l1,Chil3,Socs3,Clock,Clu,Cxcr2,Cxcr3,Ccr1,Ccr1l1,Ccr3,Ccr2,Ccr4,Ccr5,Ccr7,Camp,Cnr1,Cnr2,Cntf,Col6a1,Cr2,Crh,Crhbp,Crp,Csf1,Csf1r,Csrp3,Cst7,Ctla2a,Ctsc,Ctss,Celf1,Cx3cr1,Cyba,Cybb,Cyp19a1,Ddt,Ddx3x,Dhx9,Ackr1,Dmd,Dnase1,Dnase1l3,Dpep1,Ecm1,S1pr3,Ednrb,Egfr,Elf3,Aimp1,Epha2,Ephb2,Ephb6,Ephx2,Esr1,Drosha,Mecom,Ext1,Ezh2,F2,F2r,F2rl1,F3,F8,Il25,Fanca,Fasn,Fcer1a,Fcer1g,Fcgr1,Fcgr2b,Fcgr3,Fem1a,Fn1,Fosl1,Fosl2,Fpr2,Fpr-rs3,Fpr-rs4,Fpr1,Fpr3,Tlr3,Fut4,Fut7,Fxr1,Gata3,Gbp2,B4galt1,Ggt1,Gja1,Gnat2,Lilrb4b,Lilrb4a,Cmklr1,Gpr33,Gpx1,Gpx2,Lpcat3,Nr3c1,Grn,Cxcl1,Gstp1,Hc,Hck,Ptpn6,Hdac5,Foxf1,Hgf,Hif1a,Hk1,Hmgb1,Hmga1,Hmox1,Nr4a1,Hp,Eif2ak1,Hspa8,Hspa4,Ndst1,Htr2a,Hyal1,Hyal2,Icam1,Ido1,Ier3,Irgm1,Cxcl10,Ifnb1,Ifng,Ifngr1,Ifngr2,Igf1,Ighg2b,Ighg1,,,Igtp,Il10,Il10ra,Il12b,Il13,Il16,Il17a,Il17ra,Il18,Il18rap,Il1a,Il1b,Il1r1,Il1r2,Il1rap,Il1rn,Il18r1,Il2,Il2ra,Il4,Il4ra,Il5ra,Il6,Ins1,Ins2,Acod1,Isl1,Itgam,Itgav,Itgb1,Itgb2,Itgb2l,Itgb6,Cd47,Itih4,Jak2,Jun,Kcnj8,Kcnn4,Kit,Klkb1,Klk1b1,Kng1,Kpna6,Krt16,Krt1,Lamp2,Large1,Lat,Lbp,Ldlr,Lep,Lgals1,Lgals9,Lipa,Loxl3,Anxa1,Lpl,Xcl1,Lrp1,Lta,Lxn,Tlr7,Tlr8,Cd180,Il1rl1,Ly86,Ly96,Lyn,Il17rc,Smad1,Smad3,Havcr2,Mapkapk2,Mas1,Cma1,Tpsb2,Mdk,Abcc1,Mep1b,Clec10a,Mif,Cxcl9,Mmp8,Cd200,Mvk,Myd88,Myo5a,Naip1,Naip2,Naip5,Naip6,Ncf1,Ndp,Ndufs4,Nfe2l1,Nfe2l2,Nfix,Nfkb1,Nfkb2,Nfkbia,Nfkbib,Ninj1,Nos2,Notch1,Notch2,Ccn3,Npy5r,Slc11a1,Orm1,Orm2,Osm,P2rx1,P2rx7,Reg3b,Pdcd4,Enpp1,Per1,Pik3cd,Prkca,Prkd1,Prkcq,Prkcz,Pla2g2d,Pla2g5,Plaa,Serpine1,Pld3,Serpinf2,Plp1,Ccl21a,Pmp22,Polb,Ppara,Ppard,Pparg,Ppp2ca,Eif2ak2,Proc,Psen1,Psen2,Psmb4,Pstpip1,Ptafr,Dicer1,Ptgdr,Ptger1,Ptger2,Ptger3,Stab1,Ptger4,Ash1l,Ptgfr,Ptgir,Ptgis,Hps1,Ptgs2,Ptn,Ptpn2,Ptpn22,Sirpa,Trpv1,Rasgrp1,Nlrp1a,Rb1,Rbpj,Reg3a,Reg3g,Rel,Rela,Relb,Ripk1,Rora,Rps19,Trim30a,Nr1h4,S100a8,S100a9,Saa1,Saa2,Saa3,Saa4,Scn9a,Scnn1b,Ccl1,Ccl11,Ccl12,Ccl17,Ccl2,Ccl20,Ccl22,Ccl25,Ccl3,Ccl4,Ccl5,Ccl6,Ccl7,Ccl8,Ccl9,Cxcl15,Cxcl2,Cxcl5,Cx3cl1,Selp,Sema7a,Foxp3,Snca,Snap23,Sod1,Sphk1,Serpina1a,Serpina1b,Serpina3n,Serpinb9,Spn,Pde2a,Cd200l1,Ghsr,Stat3,Stat5a,Stat5b,Ulk4,,Enpp3,Il23r,Syk,Metrnl,Nlrp4b,Brcc3,Lacc1,Fancd2,Il20rb,Tac1,Mylk3,Duoxa1,Tbxa2r,Slc18a2,Il36g,Il1f10,Sbno2,Abhd17a,Appl2,Fem1al,Prdx2,Nlrp3,Dhrs7b,Kdm6b,Dhx33,Git1,Nr1d1,Cd300a,Pomt2,Tff2,Tgfb1,Thbs1,Timp1,Il31ra,Pxk,Tlr1,Tlr4,Tlr6,Tnc,Tnf,Tnfaip3,Tnfaip6,Tnfrsf11a,Tnfrsf1a,Tnfrsf1b,Tnfsf11,Pglyrp1,Cd40lg,Plscr1,Trex1,Trp73,Tnfrsf4,Tnfsf4,Tyro3,Tyrobp,Umod,Nr1h3,Scgb1a1,Vamp8,Vcam1,Vnn1,Vwf,Ccn4,Nrros,Wnt5a,Setd4,Trim31,Pja2,Hrh4,Ticam2,Afap1l2,Ywhaz,Zfp35,Zfp36,Camk1d,Zp3,Zdhhc5,Mavs,Syt11,Pbxip1,S100a7l2,Trim45,Chil5,Chil6,Rap1gds1,Gbp5,Zc3h12a,Themis2,Il22ra1,Nppa,Tnip2,Daglb,Cyp26b1,Lilra5,Nlrp2,Mark4,Cxcl17,Nlrp9a,Ffar2,Ffar3,Mrgpra3,Plcg2,Il17c,Slc9a6,Il22ra2,Pla2g3,Agr2,Lrfn5,Ets1,Ggt5,Tlr11,Il17d,Adamts12,Mgll,Nt5e,Muc19,Nlrp5,Cd200r4,Scn11a,Ccl19,Sigirr,Tnfsf18,Tlr2,Scyl3,Zeb2,Cers6,Tspan18,Pde5a,Napepld,Fkrp,Nlrp9b,Nlrp4a,Nfkbid,Siglecg,Nlrp10,Mcph1,Kdm4d,C2cd4a,Tarm1,Vps54,Fcgr4,Il27,Il17f,Nod2,Axl,Spata2,Map2k3,Map3k7,Mapk14,Mapk8,Mapk9,Psma1,Cul3,Pla2g10,Abcd2,Nlrc3,Chst4,Nlrc4,Dagla,Ahcy,Pla2g2e,Nlrx1,Aoah,Irf5,Tcirg1,Cd200r2,Slamf1,Pla2g7,Naglu,Tlr13,Rhbdd3,Pik3cg,H2bc1,Gpr4,C5ar2,Smo,,Abi3bp,Fpr-rs6,Fpr-rs7,Parp4,Tafa3,Cxcl3,Nlrp9c,Card9,Trim65,Nr1d2,Brcc3dc,Nlrp12,Ighe,,Nr1h5,Trim55,S100a7a,Aim2,Tlr12,Mir21a,Mir147,Mir155,Spink7,Adcy1,Otulin,Gpr31b,Rab44,Nlrp4e,Elane,Il17rb,Il22,Pbk,Mfhas1,Macir,Stk39,Tslp,Tlr5,,Ccl26,Irf3,Ccrl2,Chst2,Irgm2,Il36a,Il36rn,Tollip,Mefv,Gm5849,Extl3,Cxcl13,Cxcl11,Il17b,Ccl24,Hdac7,Gps2,Nupr1,Tmed2,Pdcd10,Socs5,Fads2,Elf4,Rps6ka4,Clec7a,Clcf1,Rabgef1,Mtor,Pf4,Stap1,Brd4,Park7,Ppbp,Gpr17,Pglyrp2,Cd200r1,Tnip1,Il17re,Crlf2,Zbp1,Cysltr1,Ghrl,F12,Nampt,Nek7,Ackr2,Gm12250,Trav7-2,Nlrp1b,Trpv4,Dusp10,Ptges,Gprc5b,Fndc4,Sirt2,Nmi,Ndfip1,Vps35,Map3k20,Setd6,Acer3,Zdhhc12,Serpinb1a,Camk2n1,Lrrk2,Cntnap2,Duoxa2,Pycard,Tril,Mkrn2,Ctnnbip1,Cuedc2,C1qtnf12,Armh4,Slc39a8,Tbc1d23,Stmp1,Plgrkt,Wdr83,Wfdc1,Chid1,Pomgnt1,Arel1,Rtn4,Letmd1,Tab2,Zfp580,Tmem258,Gsdmd,Snx4,Odam,Dab2ip,Il36b,Tnfaip8l2,Wnk4,Ifi35,Unc13d,Pnma1,Tspan2,Tradd,Rarres2,Nkiras2,Seh1l,Fbxl2,Nkg7,Mir301,Mir324,Prcp,Sting1,Uaca,Appl1,Rps6ka5,Atat1,Ankrd42,Cyld,Cd200r3,Shpk,Trim14,Slamf8,Usp50,C2cd4b,Abhd12,Il34,Gper1,Nlrp14,Chst1,Il33,Hnrnpa0,Rictor,Ak7,Scyl1,Hdac9,Lias,Cptp,Tusc2,Nfkbiz,Cxcr6,Chia1,C1qtnf3,Tlr9,Siglece,Il23a,Trem2,Pik3ap1,Nlrp4c,Jam3,Sucnr1,Hamp,Cd96,Kars1,Tac4,Cd163,Csnk1a1,Trim11,Hmgb2,Nlrp4f,Stard7"
+# split string 
+gobp_genes <- unlist(strsplit(gobp_genes_str, split = ","))
+
 ```
 
 ## Config 
------------------------> **Update THIS !!** <--------------------------
+-----------------------> **Update THIS !!**  <--------------------------
 ```{r}
 # Analysis name
-name<-"test" 
+name<-"V6.1" 
 # seurat object
-dataset.path<-"outputs/processed_rds/ibreg.h5ad.rds"
+dataset.path<-"output/processed_rds/dataset.gbm.processed.V0.UnaG.NeftelCorrected.PlusScores.Inflammation.rds"
 # The variables of interest
 myfoi=c(
-  "condition",
-  "Slpi"
-  )
+  "CTL_RES",
+  "GOBP_INFLAMMATORY_RESPONSE1")
 
-TOPN=120
+TOPN=100 # 120 # all
+TOPn=60 # group
 # Add metadata for MI selection 
 # These need to be added else we won't find association with our variables of interest
 metadata<- list(
-  condition=c("DMSO,N6")
-)
+  CTL_RES=c("CTL,RES"),
+  GOBP_INFLAMMATORY_RESPONSE1=NULL,
+  MES1=NULL,
+  MES2=NULL,
+  hypoxia_score=NULL,
+  UNAG=NULL,
+  AC=NULL,
+  OPC=NULL,
+  NPC1=NULL,
+  NPC2=NULL,
+  RiboSMean=NULL,
+  RiboLMean=NULL
+  ) 
 
 # Filters
+day<-"D1"
+cell_type<-c("Tumor")
+
 filters = list(
-  time="7d"
+  cell_types=cell_type,
+  time=day
 )
 
 # Directories 
-OUTDIR="outputs/miic_outputs"
+OUTDIR="output/miic_outputs"
 
 # State order 
-groups=list()
+groups=list(
+  "Inflammation hallmark"= gobp_genes
+)
 # Set contextual variables 
-contextual=c("condition")
+contextual=c("CTL_RES")
 
 
 ```
@@ -97,7 +122,7 @@ foi_genes <- myfoi[! myfoi %in% names(metadata)]
 if (length(foi_genes)==0){foi_genes<-NULL}
 
 # mkdir output folder if it does not exist  
-analysis_prefix =paste0(name,".","ibreg",".",paste(myfoi, collapse = "_")) 
+analysis_prefix =paste0(name,".",paste(cell_type, collapse = "_"),".",paste(myfoi, collapse = "_")) 
 
 run_outdir=file.path(OUTDIR, analysis_prefix)
 if (!dir.exists(run_outdir)) {
@@ -109,22 +134,21 @@ if (!dir.exists(run_outdir)) {
 ----
 
 ```{r}
-getwd()
 source("../miic_helper/src/preprocess_sureat_object.R") # helper functions to preprocess miic inputs 
 
-dataset.so <- readRDS(file =dataset.path)
+dataset.gbm <- readRDS(file =dataset.path)
 
 # FILTER
-dataset.so@meta.data$time <- gsub(".*_", "\\1", dataset.so@meta.data$orig.ident)
-dataset.so <- Filter_seurat_object(dataset.so,filters) # not working 
+dataset.gbm@meta.data$time <- gsub(".*_", "\\1", dataset.gbm@meta.data$orig.ident)
+dataset.gbm <- Filter_seurat_object(dataset.gbm,filters) # not working 
 
 
 if (ENABLE_MI_SELECTION) {
   # 8 threads are used to speed up the computation 
-  MI_genes  <- causalCCC.MIselection(data_input = dataset.so,
+  MI_genes  <- causalCCC.MIselection(data_input = dataset.gbm,
                                  assay_name = "RNA",
-                                 interact_ident = "myIdentFilter",
-                                 oneinteract = "oneinteract",
+                                 interact_ident = "myIdentFilter", # do not change
+                                 oneinteract = "oneinteract", # do not change
                                  goi = foi_genes, 
                                  metadata_list = names(metadata),
                                  save = T,
@@ -133,20 +157,26 @@ if (ENABLE_MI_SELECTION) {
                                  plot = T)
 }
 mi_table_file<-paste0("oneinteract_MI_table.csv")
-MI_selection=read.csv(file=file.path(run_outdir,mi_table_file),sep="\t")
+MI_selection=read.csv(file=file.path(wd,run_outdir,mi_table_file),sep="\t")
 
 selection=handle_MI_Selection(
   MI_selection,
-  names(myfoi),
-  TOPN,
+  myfoi,
+  topN=TOPN,
   run_outdir,
-  groupby=FALSE,
-  colorFeatures=c("")
+  groupby=TRUE,
+  topn = TOPn,
+  colorFeatures=c(REG_list)
 )
+
+
+#assert.consequence <- selection %>%
+#  filter(value < 1000) %>%
+#  pull(variables)
 
 # generate miic outputs 
 Generate_miic_files(
-    dataset.so,
+    dataset.gbm,
     selection$variables,
     metadata,
     myfoi,
@@ -159,14 +189,3 @@ Generate_miic_files(
 
 ```
 
-```{r}
-# grouped 
-selection_2=handle_MI_Selection(
-  MI_selection,
-  names(myfoi),
-  TOPN,
-  run_outdir,
-  groupby=TRUE,
-  colorFeatures=c("")
-)
-```

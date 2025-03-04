@@ -132,19 +132,18 @@ Generate_miic_files <- function(
   selected_genes<-selected_genes[!selected_genes %in% c(names(metadata))]
   foi_genes = foi[!foi%in% names(metadata)]
   # Add foi (genes) - make sure they are selected 
-  print("unique selected_genes size:")
+  print("unique selected genes size (removed metadata):")
   print(length(selected_genes))
-  print("foi size (not foi metadata):")
+  print("foi genes (not in metadata):")
   print(length(foi_genes))
-  print("selected metadata:")
+  print("selected metadata :")
   print(metadata_selected)
-  print(" selected_genes intersect foi :")
+  print("selected genes INTER foi :")
   print(intersect(foi_genes,selected_genes))
   
   selected_genes<-unique(c(foi_genes,selected_genes))
   nb_genes=length(selected_genes)
-  print("unique selected_genes + foi size:")
-  print(nb_genes)
+
   
   
   
