@@ -1,0 +1,172 @@
+---
+author: "achemkhi"
+date: "2024-12-06"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# MIIC on ibreg dataset - D7
+
+use both resection and GOBP_INFLAMMATORY score to select genes 
+https://www.gsea-msigdb.org/gsea/msigdb/mouse/geneset/GOBP_INFLAMMATORY_RESPONSE
+
+
+## init env
+To make sure that the environment is clean and the working directory is set to the project root.
+
+```{r, warning = FALSE }
+# remove  all objects from the environment (optional)
+rm(list=ls())
+# set the working directory to the project root
+library(this.path)
+current_file_path <- this.path::this.path()
+current_dir_path <- dirname(current_file_path) # scr
+project_dir_path <- dirname(current_dir_path) 
+
+```
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir =project_dir_path)
+setwd(project_dir_path)
+getwd()
+```
+
+## Import libraries
+
+```{r, warning = FALSE }
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(miic) #devtools::install_github("interactMIIC/causalCCC/miic_R_package", force = T, ref = "achemkhi/no-goi-limit-branch") #latest version of MIIC
+getwd()
+```
+
+
+# DEFINITIONS 
+
+## predefined list of genes 
+```{r}
+# ALL TF and regulators 
+TF_list=read.csv("data/TFs.tsv",sep="\t") %>% pull(TF)
+REG_list=read.csv("data/REGs.tsv",sep="\t") %>% pull(x)
+```
+
+## Config 
+-----------------------> **Update THIS !!** <--------------------------
+```{r}
+# Analysis name
+name<-"test" 
+# seurat object
+dataset.path<-"outputs/processed_rds/ibreg.h5ad.rds"
+# The variables of interest
+myfoi=c(
+  "condition",
+  "Slpi"
+  )
+
+TOPN=120
+# Add metadata for MI selection 
+# These need to be added else we won't find association with our variables of interest
+metadata<- list(
+  condition=c("DMSO,N6")
+)
+
+# Filters
+filters = list(
+  time="7d"
+)
+
+# Directories 
+OUTDIR="outputs/miic_outputs"
+
+# State order 
+groups=list()
+# Set contextual variables 
+contextual=c("condition")
+
+
+```
+
+# Prepare 
+```{r}
+# if not in metadata ,foi must be in gene list
+# if not it will be detected later
+foi_genes <- myfoi[! myfoi %in% names(metadata)]
+if (length(foi_genes)==0){foi_genes<-NULL}
+
+# mkdir output folder if it does not exist  
+analysis_prefix =paste0(name,".","ibreg",".",paste(myfoi, collapse = "_")) 
+
+run_outdir=file.path(OUTDIR, analysis_prefix)
+if (!dir.exists(run_outdir)) {
+  dir.create(run_outdir, recursive = TRUE)
+}
+
+```
+
+----
+
+```{r}
+getwd()
+source("../miic_helper/src/preprocess_sureat_object.R") # helper functions to preprocess miic inputs 
+
+dataset.so <- readRDS(file =dataset.path)
+
+# FILTER
+dataset.so@meta.data$time <- gsub(".*_", "\\1", dataset.so@meta.data$orig.ident)
+dataset.so <- Filter_seurat_object(dataset.so,filters) # not working 
+
+
+if (ENABLE_MI_SELECTION) {
+  # 8 threads are used to speed up the computation 
+  MI_genes  <- causalCCC.MIselection(data_input = dataset.so,
+                                 assay_name = "RNA",
+                                 interact_ident = "myIdentFilter",
+                                 oneinteract = "oneinteract",
+                                 goi = foi_genes, 
+                                 metadata_list = names(metadata),
+                                 save = T,
+                                 output_dir = file.path(run_outdir),
+                                 color_heatmap = "yellow",
+                                 plot = T)
+}
+mi_table_file<-paste0("oneinteract_MI_table.csv")
+MI_selection=read.csv(file=file.path(run_outdir,mi_table_file),sep="\t")
+
+selection=handle_MI_Selection(
+  MI_selection,
+  names(myfoi),
+  TOPN,
+  run_outdir,
+  groupby=FALSE,
+  colorFeatures=c("")
+)
+
+# generate miic outputs 
+Generate_miic_files(
+    dataset.so,
+    selection$variables,
+    metadata,
+    myfoi,
+    run_outdir,
+    analysis_prefix,
+    groups=groups,
+    assert_consequence=c(),
+    contextual=contextual
+)
+
+```
+
+```{r}
+# grouped 
+selection_2=handle_MI_Selection(
+  MI_selection,
+  names(myfoi),
+  TOPN,
+  run_outdir,
+  groupby=TRUE,
+  colorFeatures=c("")
+)
+```
