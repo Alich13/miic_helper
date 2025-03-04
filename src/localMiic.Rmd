@@ -1,0 +1,42 @@
+---
+title: "localmiic"
+author: "achemkhi"
+date: "2025-02-02"
+output: html_document
+---
+
+# local miic 
+Rscript /home/miic/miic_webserver/miic_run_analysis.R -i /home/miic/server/server_outputs/4UDwK6AQBeT2xEewTVVi/input.tsv 
+-o /home/miic/server/server_outputs/4UDwK6AQBeT2xEewTVVi 
+-l orientation 
+-e -1 
+--complexity nml 
+--conf_shuffle 0 
+--conf_ratio 0 
+--consistency no 
+--orient_probab_ratio 1.0 
+--n_threads 3 
+--plots 
+--orientation 
+--test_MAR -s /home/miic/server/server_outputs/4UDwK6AQBeT2xEewTVVi/clean_state_order.tsv 
+--miic_mode S 
+--max_nodes 200
+
+```{r cars}
+library(miic)
+
+state.order<-read.csv(file="~/Desktop/myProjects/surgery-GBM/output/miic_outputs/Tumor_miic_st.80-V0.txt")
+
+df<-read.csv(file="~/Desktop/myProjects/surgery-GBM/output/miic_outputs/Tumor_miic_matrix.80-V0.csv")
+
+
+miic_res <- miic (df,
+                  state_order=state.order,
+                  orientation=T,
+                  n_threads=6,
+                  verbose=0,
+                  ou)
+
+
+```
+
