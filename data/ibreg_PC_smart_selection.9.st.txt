@@ -1,0 +1,11 @@
+"var_names" "var_type" "levels_increasing_order" "group" "is_contextual" "is_consequence"
+"Il10" 1 NA "gene" 0 0
+"Slpi" 1 NA "gene" 0 0
+"Bcl6" 1 NA "repressing_pc" 0 0
+"Mta3" 1 NA "repressing_pc" 0 0
+"Pax5" 1 NA "repressing_pc" 0 0
+"Mitf" 1 NA "repressing_pc" 0 0
+"Bach2" 1 NA "gRNA KO promoting_IL10 (day3)" 0 0
+"Myc" 1 NA "repressing_pc" 0 0
+"Spib" 1 NA "repressing_pc" 0 0
+"condition" 0 "DMSO,N6" "metadata" 1 0

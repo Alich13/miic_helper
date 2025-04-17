@@ -14,7 +14,7 @@ library(fs)
 library(millefy)
 library(ggplot2)
 library(miic) #devtools::install_github("interactMIIC/causalCCC/miic_R_package", force = T, ref = "achemkhi/no-goi-limit-branch") #latest version of MIIC
-#source("src/aux.R") # TODO add the function in the same script 
+source("/Users/alichemkhi/Desktop/myProjects/miic_helper/src/aux.r") # TODO add the function in the same script 
 
 
 # Filter
@@ -54,11 +54,11 @@ MI_heatmap <- function(heatmap_selection,highlight_genes,plot_name,output_path) 
     theme_minimal() +
     labs(title = plot_name, x = "reference variables", y = "selected genes") +
     theme(
-      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), # Rotate x-axis labels
+      axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1,size=6), # Rotate x-axis labels
       axis.text.y = element_blank(), # Increase y-axis label size for readability
     )+
     geom_text(aes(label = variables, y = variables, x = 0, color = label_color), 
-              inherit.aes = FALSE, hjust = 0,size=1.5) +
+              inherit.aes = FALSE, hjust = 0,size=2) +
     scale_color_identity() # Use label_color as is without legend
   
   ggsave(output_path, plot = plot, width = 6, height = 10, bg = "white") 
@@ -82,6 +82,7 @@ handle_MI_Selection <- function(mi_df,
   if (groupby)
   {
      selection_df<-mi_df %>%
+       ungroup() %>%
        filter(foi %in% myfoi) %>% 
        filter (!foi %in% c("RiboSMean","RiboLMean","mtMean")) %>%
        group_by(foi) %>% 
@@ -95,10 +96,12 @@ handle_MI_Selection <- function(mi_df,
   else
   {
     selection_df<-mi_df %>%
+      ungroup() %>%
       filter(foi %in% myfoi) %>% 
       filter (!foi %in% c("RiboSMean","RiboLMean","mtMean")) %>%
       arrange(desc(value)) %>%
-      slice_head(n = topN)
+      slice_head(n = topN) %>%
+      distinct(variables,.keep_all = TRUE)
   }
   
   selection <- selection_df %>% pull(variables)
@@ -132,13 +135,11 @@ Generate_miic_files <- function(
   selected_genes<-selected_genes[!selected_genes %in% c(names(metadata))]
   foi_genes = foi[!foi%in% names(metadata)]
   # Add foi (genes) - make sure they are selected 
-  print("unique selected genes size (removed metadata):")
+  print("Unique selected genes size (removed metadata):")
   print(length(selected_genes))
-  print("foi genes (not in metadata):")
-  print(length(foi_genes))
-  print("selected metadata :")
+  print("Selected metadata :")
   print(metadata_selected)
-  print("selected genes INTER foi :")
+  print("Selected genes INTER foi :")
   print(intersect(foi_genes,selected_genes))
   
   selected_genes<-unique(c(foi_genes,selected_genes))
@@ -182,6 +183,7 @@ Generate_miic_files <- function(
                                    is_contextual = rep(0),
                                    is_consequence = rep(0))
   
+
   #define categorical vars and orders
   for (metadata_item in names(metadata)) {
     if (!is.null(metadata[[metadata_item]]) & metadata_item %in% colnames(matrix.use)) {
@@ -189,7 +191,7 @@ Generate_miic_files <- function(
       category.order.use[category.order.use$var_names == metadata_item, "levels_increasing_order"] <- metadata[[metadata_item]]  # c("CTL,RES")
     }
   }
-  
+  print("category order use")
   #define contextual
   if (length(contextual)>0)
   {

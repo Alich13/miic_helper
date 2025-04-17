@@ -3,6 +3,53 @@
 # convert from Seurat to anndata format https://smorabit.github.io/blog/2021/velocyto/
 
 library(Seurat)
+# CD to the miic folder
+#R CMD INSTALL --library=/Users/alichemkhi/Desktop/code/miic_lib_210 ./
+library(miic ,lib.loc="/Users/alichemkhi/Desktop/code/miic_lib_210") 
+# check miic version
+packageVersion("miic")
+library(reshape2)
+
+# doc
+#' @title wrap_selection
+#' @description This function selects features based on mutual information scores.
+#' @param dataset Seurat object containing the dataset
+#' @param subset_vars Vector of variable names to be used for feature selection (selection pool)
+#' @param var_of_interest Variable of interest for feature selection
+#' @param threads Number of threads to use for parallel processing
+#' @param run_outdir Output directory for saving results
+wrap_MI_compute <- function(dataset,subset_vars,var_of_interest,threads,run_outdir,name) {
+  
+  matrix_ <-dataset@assays$RNA$counts
+  print("Matrix loaded ...")
+  # if subset_vars is not NULL, subset the matrix
+  if (!is.null(subset_vars)) {
+    matrix_ <- matrix_[subset_vars,]
+    print("Matrix subsetted ...")
+  }
+
+  # add the metadata of interest to the matrix
+  metadata_of_interest<- intersect(var_of_interest, colnames(dataset@meta.data))
+  matrix_ <-cbind(t(matrix_), dataset@meta.data[metadata_of_interest])
+
+  print("Computing MI scores ...")
+  mi_scores<-miic::selectFeatures(
+      matrix_,
+      n_features=0,
+      var_of_interest_names=unique(var_of_interest),
+      n_threads=threads, verbose=3, plot=F)
+  print("MI selection done ... saving results")
+
+  matrix_melt<-reshape2::melt(mi_scores$mis) 
+  names(matrix_melt) <-  c("variables","foi","value")
+  # save selection as tsv
+  write.table(matrix_melt,
+              file=file.path(run_outdir,paste0(name,"_MI_table.csv")),sep="\t",quote = F,row.names = F)
+
+  return (matrix_melt)
+}
+
+
 
 
 
