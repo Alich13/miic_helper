@@ -1,6 +1,6 @@
 # miic_helper
 
-This repo contain helper functions to preprocess seurat objects and prepare for miic analysis . 
+This repo contains helper functions to preprocess seurat objects and prepare for miic analysis . 
 
 Planning to wrap up all the functions in a single command line (python) in the future .
 
