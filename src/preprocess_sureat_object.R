@@ -17,7 +17,10 @@ library(miic) #devtools::install_github("interactMIIC/causalCCC/miic_R_package",
 source("/Users/alichemkhi/Desktop/myProjects/miic_helper/src/aux.r") # TODO add the function in the same script 
 
 
-# Filter
+# Filter_seurat_object: Filter a Seurat object based on a list of filters (cell type, etc.)
+# Args:
+#   seurat_object: A Seurat object to filter.
+#   filter_list: Named list of filters (e.g., cell types or clusters to keep).
 Filter_seurat_object <- function(seurat_object, filter_list) {
 
   if (length(filter_list) > 0) {  # Apply filters only if filter_list is not empty
@@ -36,7 +39,7 @@ Filter_seurat_object <- function(seurat_object, filter_list) {
 }
 
 
-# Heatmap
+# MI_heatmap: Plot and save a heatmap of mutual information values, highlighting selected genes
 MI_heatmap <- function(heatmap_selection,highlight_genes,plot_name,output_path) {
   
   # Add a column to determine label colors based on highlight_genes
@@ -68,7 +71,7 @@ MI_heatmap <- function(heatmap_selection,highlight_genes,plot_name,output_path) 
 
 
 
-# return the list of selected variables as well as a heatmap 
+# handle_MI_Selection: Select top variables by MI, save selection, and plot heatmap
 handle_MI_Selection <- function(mi_df,
                                 foi,
                                 topN,
@@ -117,6 +120,17 @@ handle_MI_Selection <- function(mi_df,
     
 
 
+# Generate_miic_files: Generate MIIC input files (matrix and metadata) from Seurat object and selection
+# Args:
+#   seurat_object: Seurat object containing data.
+#   selection: Vector of selected gene/feature names.
+#   metadata: Named list of metadata variables and their levels (or NULL for continuous).
+#   foi: Vector of features of interest (reference variables).
+#   OUTDIR: Output directory for files.
+#   prefix_name: Prefix for output files.
+#   groups: Named list of groupings for variables (optional).
+#   assert_consequence: Vector of variables to mark as consequences (optional).
+#   contextual: Vector of variables to mark as contextual (optional).
 Generate_miic_files <- function(
     seurat_object,
     selection,
