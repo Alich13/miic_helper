@@ -13,16 +13,19 @@
 #
 # Example usage:
 # Rscript /Users/alichemkhi/Desktop/myProjects/miic_helper/src/run_miic_select.R \
-#   --matrix  /Users/alichemkhi/Desktop/myProjects/2D_gast/output/v0.5/wnt_data_counts.csv \
-#   --metadata /Users/alichemkhi/Desktop/myProjects/2D_gast/output/v0.5/wnt_data_metadata.csv \
+#   --matrix  /Users/alichemkhi/Desktop/myProjects/miic_helper/data/wnt_data_counts.csv \
+#   --metadata /Users/alichemkhi/Desktop/myProjects/miic_helper/data/wnt_data_metadata.csv \
 #   --variables_of_interest T,condition,time \
 #   --selection_pool T,WNT3,BMP4 \
 #   --output /Users/alichemkhi/Desktop/myProjects/output/v0.2/miic_results.csv
 
 
 # Load libraries
-library(miic, lib.loc = "/Users/alichemkhi/Desktop/code/miic_lib_210")
+#library(miic)
+library(miic)#,lib.loc = "/Users/alichemkhi/Desktop/code/miic_lib_210")
 library(Matrix)
+print("----> miic version:")
+print(packageVersion("miic"))
 
 # Parse command line arguments
 args <- commandArgs(trailingOnly = TRUE)
@@ -44,8 +47,8 @@ selection_pool <- unlist(strsplit(selection_pool_str, ","))
 
 
 # Read matrix and metadata
-matrix_df <- read.csv(matrix_file,check.names = FALSE)
-meta_df   <- read.csv(metadata_file,check.names = FALSE)
+matrix_df <- read.csv(matrix_file,check.names = FALSE, row.names = 1)
+meta_df   <- read.csv(metadata_file,check.names = FALSE, row.names = 1)
 
 # Classify variables into genes (matrix columns) and metadata columns
 var_of_interest_names <- c()  # genes in matrix
@@ -106,19 +109,19 @@ if (length(selection_pool) > 0 && !is.na(selection_pool[1]) && selection_pool[1]
 
 
 # Run MIIC
-mi_scores <- miic::selectFeatures(
+mi_scores <- miic:::compute_mi_batch(
   matrix_df,
-  n_features = 0,
   var_of_interest_values = var_of_interest_values,
   var_of_interest_names = var_of_interest_names,
   n_threads = 6,
   verbose = 3,
-  plot = FALSE
+  corrected = FALSE,
+  unit="bits"
 )
 
 # Save result
 cat("output path : ", output_file)
-write.csv(mi_scores$mis, output_file, row.names = TRUE)
+write.csv(mi_scores, output_file, row.names = TRUE)
 
 
 
