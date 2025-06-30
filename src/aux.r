@@ -2,11 +2,47 @@
 
 library(Seurat)
 # CD to the miic folder
-#R CMD INSTALL --library=/Users/alichemkhi/Desktop/code/miic_lib_210 ./
-library(miic ,lib.loc="/Users/alichemkhi/Desktop/code/miic_lib_210") 
+library(miic,lib.loc = "/Users/alichemkhi/Desktop/code/miic_v210_branck_lib") 
 # check miic version
 packageVersion("miic")
 library(reshape2)
+
+
+#' @title save_seurat_files
+#' @description Saves Seurat object metadata, raw counts, and optionally the object itself to files with a version suffix.
+#' @param seurat_obj A Seurat object to save.
+#' @param outdir Output directory for saving files.
+#' @param version_suffix A string to append to file names (e.g., "_v1").
+#' @param save_rds Logical, whether to save the Seurat object as an RDS file (default: TRUE).
+#' @return None. Files are written to disk.
+#' @examples
+#' # Not run:
+#' save_seurat_files(seurat_obj, "/path/to/outdir", "_v1")
+#' # End(Not run)
+save_seurat_files <- function(seurat_obj, outdir, version_suffix = "", save_rds = FALSE) {
+  # Save the metadata as CSV
+  write.csv(
+    seurat_obj@meta.data,
+    file = file.path(outdir, paste0("metadata", version_suffix, ".csv")),
+    row.names = TRUE
+  )
+  
+  # Save the raw count matrix as CSV
+  raw_counts <- seurat_obj@assays$RNA$counts
+  write.csv(
+    raw_counts,
+    file = file.path(outdir, paste0("raw_counts", version_suffix, ".csv")),
+    row.names = TRUE
+  )
+  
+  # Optionally save as RDS
+  if (save_rds) {
+    saveRDS(
+      seurat_obj,
+      file = file.path(outdir, paste0("dataset.filtered", version_suffix, ".rds"))
+    )
+  }
+}
 
 #' @title wrap_selection
 #' @description This function selects features based on mutual information scores.
@@ -34,13 +70,11 @@ wrap_MI_compute <- function(dataset,subset_vars,var_of_interest,threads,run_outd
   # add the metadata of interest to the matrix
   metadata_of_interest<- intersect(var_of_interest, colnames(dataset@meta.data))
   matrix_ <-cbind(t(matrix_), dataset@meta.data[metadata_of_interest])
-
-  print("Computing MI scores ...")
   mi_scores<-miic::selectFeatures(
       matrix_,
       n_features=0,
       var_of_interest_names=unique(var_of_interest),
-      n_threads=threads, verbose=3, plot=F)
+      n_threads=threads, verbose=3, plot=F,unit = "bits",corrected = F)
   print("MI selection done ... saving results")
 
   matrix_melt<-reshape2::melt(mi_scores$mis) 

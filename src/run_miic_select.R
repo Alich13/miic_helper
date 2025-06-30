@@ -22,7 +22,7 @@
 
 # Load libraries
 #library(miic)
-library(miic)#,lib.loc = "/Users/alichemkhi/Desktop/code/miic_lib_210")
+library(miic,lib.loc = "/Users/alichemkhi/Desktop/code/miic_v210_branck_lib") 
 library(Matrix)
 print("----> miic version:")
 print(packageVersion("miic"))
@@ -61,11 +61,11 @@ for (var in all_variables) {
   if (var %in% colnames(matrix_df)) {
     # Variable is a gene in the matrix
     var_of_interest_names <- c(var_of_interest_names, var)
-    cat("Found variable '", var, "' in matrix columns\n")
+    #cat("Found variable '", var, "' in matrix columns\n")
   } else if (var %in% colnames(meta_df)) {
     # Variable is a metadata column
     var_of_interest_value_names <- c(var_of_interest_value_names, var)
-    cat("Found variable '", var, "' in metadata columns\n")
+    #cat("Found variable '", var, "' in metadata columns\n")
   } else {
     # Variable not found in either
     stop("Warning: Variable '", var, "' not found in matrix columns or metadata columns\n")
