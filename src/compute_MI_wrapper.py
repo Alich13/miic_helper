@@ -12,7 +12,7 @@ Date: June 2025
 import os
 import subprocess
 
-def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, selection_pool, output_path, r_script_path=None):
+def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, selection_pool, output_path, r_script_path=None, run_script=True):
     """
     Python wrapper function to call the R MIIC feature selection script.
     
@@ -30,6 +30,8 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
         Path for the output CSV file
     r_script_path : str, optional
         Path to the R script. If None, uses default path
+    run_script : bool, optional
+        If True, runs the R script; if False, just prints the command without executing
     
     Returns:
     --------
@@ -44,8 +46,12 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
         If input files or R script are not found
     """
     variables_of_interest = list(variables_of_interest)
-    selection_pool = list(selection_pool)
-    
+    if selection_pool:
+        selection_pool = list(selection_pool)
+        selection_pool_str = ','.join(selection_pool)
+    else:
+        selection_pool_str = ''
+
     # Default R script path
     if r_script_path is None:
         r_script_path = '/Users/alichemkhi/Desktop/myProjects/miic_helper/src/run_miic_select.R'
@@ -56,10 +62,6 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
     else:
         variables_str = str(variables_of_interest)
     
-    if isinstance(selection_pool, list):
-        selection_pool_str = ','.join(selection_pool)
-    else:
-        selection_pool_str = str(selection_pool)
     
     # Validate input files exist
     if not os.path.exists(count_matrix_path):
@@ -74,16 +76,19 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Build the R script command
+    # Build the R script command (multi-line with \)
+
+    
     cmd = [
-        'Rscript',
-        r_script_path,
-        '--matrix', count_matrix_path,
-        '--metadata', metadata_path,
-        '--variables_of_interest', variables_str,
-        '--selection_pool', selection_pool_str,
+        'Rscript', r_script_path, \
+        '--matrix', count_matrix_path, \
+        '--metadata', metadata_path, \
+        '--variables_of_interest', variables_str, \
         '--output', output_path
     ]
+
+    if selection_pool is not None:
+        cmd.extend(['--selection_pool', selection_pool_str])
 
 
     
@@ -93,31 +98,38 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
     print(f"Selection pool: {selection_pool_str}")
     print(f"Output will be saved to: {output_path}")
     
-    try:
-        # Run the R script and wait for it to finish
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        # Print R script output
-        if result.stdout:
-            print("\nR script output:")
-            print(result.stdout)
+    if  run_script:
+        try:
+            # Run the R script and wait for it to finish
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            
+            # Print R script output
+            if result.stdout:
+                print("\nR script output:")
+                print(result.stdout)
 
-        print(f"\nMIIC selection completed successfully!")
-        print(f"Results saved to: {output_path}")
-        
+            print(f"\nMIIC selection completed successfully!")
+            print(f"Results saved to: {output_path}")
+            
+            return output_path
+            
+        except subprocess.CalledProcessError as e:
+            print(f"\nError running R script:")
+            print(f"Return code: {e.returncode}")
+            print(f"STDOUT: {e.stdout}")
+            print(f"STDERR: {e.stderr}")
+            raise
+        except Exception as e:
+            print(f"\nUnexpected error: {str(e)}")
+            raise
+    else:
+        # print the command without executing in a way that it can be copied and run later
+        print("\nCommand to run MIIC selection (not executed):")
+        cmd_str = " \\\n    ".join(cmd)
+        print(cmd_str)
         return output_path
-        
-    except subprocess.CalledProcessError as e:
-        print(f"\nError running R script:")
-        print(f"Return code: {e.returncode}")
-        print(f"STDOUT: {e.stdout}")
-        print(f"STDERR: {e.stderr}")
-        raise
-    except Exception as e:
-        print(f"\nUnexpected error: {str(e)}")
-        raise

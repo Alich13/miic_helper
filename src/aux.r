@@ -8,6 +8,62 @@ packageVersion("miic")
 library(reshape2)
 
 
+
+
+
+#' @title save_seurat_files_mtx
+#' @description Saves Seurat object metadata, raw counts (as .mtx), and optionally the object itself.
+#'              Output format is compatible with Scanpy/AnnData.
+#' @param seurat_obj A Seurat object to save.
+#' @param outdir Output directory for saving files.
+#' @param save_rds Logical, whether to save the Seurat object as an RDS file (default: FALSE).
+#' @return None. Files are written to `outdir` in Scanpy-compatible format.
+#' @examples
+#' # Not run:
+#' save_seurat_files_mtx(seurat_obj, "/path/to/outdir")
+#' # End(Not run)
+save_seurat_files_mtx <- function(seurat_obj, outdir, save_rds = FALSE) {
+  # Ensure output directory exists
+  dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
+
+  # Extract raw counts (sparse matrix)
+  counts <- seurat_obj@assays$RNA@counts
+
+  # Write sparse matrix
+  Matrix::writeMM(t(counts), file = file.path(outdir, "raw_counts.mtx"))
+
+  # Write gene (feature) names
+  write.table(
+    rownames(counts),
+    file = file.path(outdir, "genes.txt"),
+    quote = FALSE, row.names = FALSE, col.names = FALSE
+  )
+
+  # Write cell (barcode) names
+  write.table(
+    colnames(counts),
+    file = file.path(outdir, "cells.txt"),
+    quote = FALSE, row.names = FALSE, col.names = FALSE
+  )
+
+  # Write metadata
+  write.csv(
+    seurat_obj@meta.data,
+    file = file.path(outdir, "metadata.csv"),
+    row.names = TRUE
+  )
+
+  # Optionally save the Seurat object
+  if (save_rds) {
+    saveRDS(
+      seurat_obj,
+      file = file.path(outdir, "dataset.filtered.rds")
+    )
+  }
+}
+
+
+
 #' @title save_seurat_files
 #' @description Saves Seurat object metadata, raw counts, and optionally the object itself to files with a version suffix.
 #' @param seurat_obj A Seurat object to save.
@@ -28,9 +84,9 @@ save_seurat_files <- function(seurat_obj, outdir, version_suffix = "", save_rds 
   )
   
   # Save the raw count matrix as CSV
-  raw_counts <- seurat_obj@assays$RNA$counts
+  #raw_counts <- seurat_obj@assays$RNA$counts
   write.csv(
-    raw_counts,
+    seurat_obj@assays$RNA$counts,
     file = file.path(outdir, paste0("raw_counts", version_suffix, ".csv")),
     row.names = TRUE
   )
