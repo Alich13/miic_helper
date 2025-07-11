@@ -2,8 +2,7 @@
 MIIC Helper - Python Wrapper for R MIIC Feature Selection
 
 This module provides a Python interface to run MIIC (Multivariate Information-based 
-Inductive Causation) feature selection using an R backend. It facilitates the selection
-of relevant features from genomic data by computing mutual information scores.
+Inductive Causation) feature selection using an R backend. 
 
 Author: Ali Chemkhi
 Date: June 2025
@@ -11,27 +10,35 @@ Date: June 2025
 
 import os
 import subprocess
+# import sys
+# sys.path.append('/Users/alichemkhi/Desktop/myProjects/miic_helper/src') # Adjust this path as needed
+from process_anndata_object import save_anndata_to_csv 
 
-def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, selection_pool, output_path, r_script_path=None, run_script=True):
+
+def run_miic_selection(adata, variables_of_interest, selection_pool, output_path, compute_meta_mi_scores=False, r_script_path=None, run_script=True):
     """
     Python wrapper function to call the R MIIC feature selection script.
     
+    This function takes an AnnData object, saves it as tmp CSV files, and calls an R script
+    to perform MIIC feature selection. 
+    
     Parameters:
     -----------
-    count_matrix_path : str
-        Path to the count matrix CSV file
-    metadata_path : str
-        Path to the metadata CSV file
+    adata : AnnData
+        AnnData object containing the count matrix and metadata
     variables_of_interest : list or str
-        List of variables of interest (genes or metadata columns), or comma-separated string
-    selection_pool : list or str
-        List of genes for selection pool, or comma-separated string
+        List of variables of interest (genes or metadata columns), or comma-separated string.
+        Cannot be empty.
+    selection_pool : list, str, or None
+        List of genes for selection pool, comma-separated string, or None for no selection pool
     output_path : str
         Path for the output CSV file
+    compute_meta_mi_scores : bool, optional
+        Whether to compute mutual information scores for metadata variables (default: False)
     r_script_path : str, optional
         Path to the R script. If None, uses default path
     run_script : bool, optional
-        If True, runs the R script; if False, just prints the command without executing
+        If True, runs the R script; if False, just prints the command without executing (default: True)
     
     Returns:
     --------
@@ -40,15 +47,42 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
     
     Raises:
     -------
+    ValueError
+        If variables_of_interest is empty
     subprocess.CalledProcessError
         If the R script execution fails
     FileNotFoundError
         If input files or R script are not found
     """
-    variables_of_interest = list(variables_of_interest)
+
+    # Save the AnnData object to tmp CSV files so that the R script can read them
+    # Note: This assumes that the adata object has been preprocessed and contains the necessary data
+    count_matrix_path, metadata_path = save_anndata_to_csv(
+        adata, 
+        f"/tmp/tmp_annadata_raw_matrix",
+        save_counts=True,
+        save_metadata=True,
+        transpose_counts=False
+    )
+
+
+    # Validate inputs
+    if not variables_of_interest:
+        raise ValueError("variables_of_interest cannot be empty")
+
+    # Convert variables_of_interest to list if it's a string
+    if isinstance(variables_of_interest, str):
+        variables_of_interest = [variables_of_interest]
+    elif not isinstance(variables_of_interest, list):
+        variables_of_interest = list(variables_of_interest)
+    
+    # Handle selection_pool parameter
     if selection_pool:
-        selection_pool = list(selection_pool)
-        selection_pool_str = ','.join(selection_pool)
+        if isinstance(selection_pool, str):
+            selection_pool_str = selection_pool
+        else:
+            selection_pool_list = list(selection_pool)
+            selection_pool_str = ','.join(selection_pool_list)
     else:
         selection_pool_str = ''
 
@@ -56,11 +90,8 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
     if r_script_path is None:
         r_script_path = '/Users/alichemkhi/Desktop/myProjects/miic_helper/src/run_miic_select.R'
     
-    # Convert lists to comma-separated strings if needed
-    if isinstance(variables_of_interest, list):
-        variables_str = ','.join(variables_of_interest)
-    else:
-        variables_str = str(variables_of_interest)
+    # Convert variables_of_interest to comma-separated string
+    variables_str = ','.join(variables_of_interest)
     
     
     # Validate input files exist
@@ -87,11 +118,12 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
         '--output', output_path
     ]
 
-    if selection_pool is not None:
+    if selection_pool_str:  # Only add selection_pool if it's not empty
         cmd.extend(['--selection_pool', selection_pool_str])
 
+    if compute_meta_mi_scores:
+        cmd.extend(['--compute_meta_mi_scores', str(compute_meta_mi_scores).upper()])
 
-    
     print(f"Running MIIC selection with command:")
     print(' '.join(cmd))
     print(f"Variables of interest: {variables_str}")
@@ -133,3 +165,4 @@ def run_miic_selection(count_matrix_path, metadata_path, variables_of_interest, 
         cmd_str = " \\\n    ".join(cmd)
         print(cmd_str)
         return output_path
+    

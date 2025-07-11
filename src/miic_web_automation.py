@@ -24,7 +24,9 @@ def submit_miic_jobs(
     job_names: Optional[List[str]] = None,
     email: str = "ali.chemkhi@curie.fr",
     headless: bool = False,
-    wait_time: int = 10
+    wait_time: int = 10,
+    orientation_cut: str = "0.01" , # Default value for orientation cut
+    skeleton_cut: bool = True  # Default value for skeleton cut
 ) -> List[str]:
     """
     Submit multiple datasets to MIIC web server and return result links.
@@ -110,6 +112,26 @@ def submit_miic_jobs(
                 )
                 st_upload.send_keys(st_path)
                 time.sleep(2)
+
+                # --- skeleton cut
+                if skeleton_cut : 
+                    # Wait until the radio button is present and clickable
+                    radio_button = driver.find_element(By.XPATH, "/html/body/div[2]/form/div[2]/div[5]/div/div[1]/div/input[1]")
+                    # Scroll it into view
+                    driver.execute_script("arguments[0].scrollIntoView(true);", radio_button)
+                    time.sleep(0.5)  # Give browser time to render
+                    driver.execute_script("arguments[0].click();", radio_button)
+                    # Confirm selection
+                    print("Selected:", radio_button.is_selected())
+        
+                # --- orientation cut
+                upload_input = driver.find_element(By.XPATH, "/html/body/div[2]/form/div[2]/div[6]/div/div/div/input")
+                # Set the value directly using JS
+                driver.execute_script("arguments[0].value = arguments[1];", upload_input, orientation_cut)
+                time.sleep(1)
+
+
+
                 
                 # Step 6: Submit job
                 print(f"Submitting MIIC job for {name}...")

@@ -25,9 +25,16 @@ library(reshape2)
 save_seurat_files_mtx <- function(seurat_obj, outdir, save_rds = FALSE) {
   # Ensure output directory exists
   dir.create(outdir, showWarnings = FALSE, recursive = TRUE)
-
+  print("Saving raw counts as CSV...")
   # Extract raw counts (sparse matrix)
-  counts <- seurat_obj@assays$RNA@counts
+  # Prefer @counts if available, otherwise fallback to @count
+  if (!is.null(seurat_obj@assays$RNA$counts)) {
+    counts <- seurat_obj@assays$RNA$counts
+  } else if (!is.null(seurat_obj@assays$RNA@count)) {
+    counts <- seurat_obj@assays$RNA@count
+  } else {
+    stop("No count matrix found in seurat_obj@assays$RNA.")
+  }
 
   # Write sparse matrix
   Matrix::writeMM(t(counts), file = file.path(outdir, "raw_counts.mtx"))
